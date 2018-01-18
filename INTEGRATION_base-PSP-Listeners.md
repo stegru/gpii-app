@@ -57,3 +57,11 @@ and universal
   git fetch stegru
   git merge stegru/PILOT2
 ```
+
+2. Installer
+
+WIP
+
+Currently is pointing to git clone --branch PILOT2 https://github.com/stegru/gpii-wix-installer, we need
+to verify is we should track in another branch or is enough.
+
