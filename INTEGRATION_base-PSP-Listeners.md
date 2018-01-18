@@ -36,18 +36,24 @@ from the PCP branch.
 ## Non merged PRs
 
 1. Adding #2204 (Listeners) using current integration of stegru at stegru/gpii-app#PILOT2
+```
   git remote add stegru https://github.com/stegru/gpii-app.git
   git fetch stegru
   git merge stegru/PILOT2
+```
 
 and windows
 
+```
   git remote add stegru https://github.com/stegru/windows.git
   git fetch stegru
   git merge stegru/PILOT2
+```
 
 and universal
 
+```
   git remote add stegru https://github.com/stegru/universal.git
   git fetch stegru
   git merge stegru/PILOT2
+```
