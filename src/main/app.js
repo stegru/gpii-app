@@ -269,6 +269,14 @@ fluid.defaults("gpii.app", {
             args: ["{that}", "{arguments}.1.options.userToken"]
         },
 
+        "onCreate.systemShutdown": "{gpii.windows.messages}.start({that})",
+        "onDestroy.systemShutdown": "{gpii.windows.messages}.stop({that})",
+        "{gpii.windows.messages}.events.onMessage": {
+            funcName: "gpii.app.windowMessage",
+            // that, hwnd, msg, wParam, lParam, result
+            args: [ "{that}", "{arguments}.0", "{arguments}.1", "{arguments}.2", "{arguments}.3", "{arguments}.4" ]
+        },
+
         "onDestroy.beforeExit": {
             listener: "{that}.keyOut"
         }
@@ -497,6 +505,28 @@ fluid.onUncaughtException.addListener(function (err) {
     }
 }, "gpii.app", "last");
 
+/**
+ * Handles the onMessage event of the gpii.windows.messages component.
+ *
+ * @param that {Component} An instance of gpii.app
+ * @param hwnd {number} Window handle.
+ * @param msg {number} The message.
+ * @param wParam {number} Message parameter.
+ * @param lParam {number} Message parameter.
+ * @param result {object} Set a 'value' field to specify a return value.
+ */
+gpii.app.windowMessage = function (that, hwnd, msg, wParam, lParam, result) {
+    // https://msdn.microsoft.com/library/aa376889
+    var WM_QUERYENDSESSION = 0x11;
+    if (msg === WM_QUERYENDSESSION) {
+        fluid.log(fluid.logLevel.FATAL, "System shutdown detected.");
+        that.exit();
+        result.value = 0;
+    }
+};
+
+// Make gpii shutdown first, so it can close any child processes itself.
+gpii.windows.kernel32.SetProcessShutdownParameters(0x3ff, 0);
 
 // A wrapper that wraps gpii.app as a subcomponent. This is the grade need by configs/app.json
 // to distribute gpii.app as a subcomponent of GPII flow manager since infusion doesn't support
