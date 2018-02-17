@@ -516,7 +516,7 @@ fluid.onUncaughtException.addListener(function (err) {
  * @param result {object} Set a 'value' field to specify a return value.
  */
 gpii.app.windowMessage = function (that, hwnd, msg, wParam, lParam, result) {
-    // https://msdn.microsoft.com/library/aa376889
+    // https://msdn.microsoft.com/library/aa376890
     var WM_QUERYENDSESSION = 0x11;
     if (msg === WM_QUERYENDSESSION) {
         fluid.log(fluid.logLevel.FATAL, "System shutdown detected.");
