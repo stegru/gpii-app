@@ -525,8 +525,8 @@ gpii.app.windowMessage = function (that, hwnd, msg, wParam, lParam, result) {
     }
 };
 
-// Make gpii shutdown first, so it can close any child processes itself.
-gpii.windows.kernel32.SetProcessShutdownParameters(0x3ff, 0);
+// Make gpii shutdown last, so it doesn't close before the shutdown is cancelled by another process.
+gpii.windows.kernel32.SetProcessShutdownParameters(0x100, 0);
 
 // A wrapper that wraps gpii.app as a subcomponent. This is the grade need by configs/app.json
 // to distribute gpii.app as a subcomponent of GPII flow manager since infusion doesn't support
