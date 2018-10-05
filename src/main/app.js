@@ -654,12 +654,12 @@ fluid.onUncaughtException.addListener(function (err) {
 /**
  * Handles the onMessage event of the gpii.windows.messages component.
  *
- * @param that {Component} An instance of gpii.app
- * @param hwnd {number} Window handle.
- * @param msg {number} The message.
- * @param wParam {number} Message parameter.
- * @param lParam {number} Message parameter.
- * @param result {object} Set a 'value' field to specify a return value.
+ * @param {Component} that An instance of gpii.app
+ * @param {Number} hwnd Window handle.
+ * @param {Number} msg The message.
+ * @param {Number} wParam Message parameter.
+ * @param {Number} lParam Message parameter.
+ * @param {Object} result Set a 'value' field to specify a return value.
  */
 gpii.app.windowMessage = function (that, hwnd, msg, wParam, lParam, result) {
     // https://msdn.microsoft.com/library/aa376890
