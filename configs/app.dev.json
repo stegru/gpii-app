@@ -3,21 +3,25 @@
     "options": {
         "gradeNames": ["fluid.component"],
         "distributeOptions": {
-            "distributeTaskTray": {
-                "record": "gpii.appWrapper",
-                "target": "{that flowManager}.options.gradeNames"
-            },
             "distributeMenuDisplay": {
                 "record": "gpii.app.menuInAppDev",
                 "target": "{that menu}.options.gradeNames"
             },
-            "distributePcpChannelConnector": {
+            "distributeDevPcpChannelConnector": {
                 "record": "gpii.app.dev.gpiiConnector",
                 "target": "{that gpiiConnector}.options.gradeNames"
+            },
+            "distributeSurveyConnector": {
+                "record": "gpii.app.staticSurveyConnector",
+                "target": "{that surveyConnector}.options.gradeNames"
+            },
+            "distributeStaticSurveyConnectorFixture": {
+                "record": "%gpii-app/testData/survey/triggers.dev.json5",
+                "target": "{that staticSurveyConnector}.options.paths.triggersFixture"
             }
         }
     },
     "mergeConfigs": [
-        "../node_modules/universal/gpii/configs/gpii.config.development.all.local.json"
-     ]
+        "%gpii-app/configs/app.base.json"
+    ]
 }

@@ -20,16 +20,26 @@
     fluid.registerNamespace("gpii.psp");
 
     fluid.defaults("gpii.psp", {
-        gradeNames: ["fluid.component"],
+        gradeNames: ["fluid.component", "gpii.psp.messageBundles"],
+        model: {
+            theme: null,
+            sounds: {}
+        },
         components: {
-            clientChannel: {
+            channel: {
                 type: "gpii.psp.clientChannel",
                 options: {
                     listeners: {
+                        onIsKeyedInUpdated: {
+                            funcName: "{mainWindow}.updateIsKeyedIn"
+                        },
                         onPreferencesUpdated: {
                             funcName: "{mainWindow}.updatePreferences"
                         },
                         onAccentColorChanged: {
+                            funcName: "{mainWindow}.updateAccentColor"
+                        },
+                        onThemeChanged: {
                             funcName: "{mainWindow}.updateTheme"
                         },
                         onSettingUpdated: {
@@ -46,17 +56,41 @@
                 type: "gpii.psp.mainWindow",
                 container: "#flc-body",
                 options: {
+                    model: {
+                        theme: "{psp}.model.theme",
+                        sounds: "{psp}.model.sounds"
+                    },
                     listeners: {
-                        onPSPClose: "{clientChannel}.close",
-                        onKeyOut: "{clientChannel}.keyOut",
-                        onSettingAltered: "{clientChannel}.alterSetting",
-                        onActivePreferenceSetAltered: "{clientChannel}.alterActivePreferenceSet",
-                        onContentHeightChanged: "{clientChannel}.changeContentHeight",
+                        onPSPClose: "{channel}.close",
+                        onKeyOut: "{channel}.keyOut",
+                        onSettingAltered: "{channel}.alterSetting",
+                        onActivePreferenceSetAltered: "{channel}.alterActivePreferenceSet",
+                        onHeightChanged: "{channel}.changeContentHeight",
 
-                        onRestartNow: "{clientChannel}.restartNow",
-                        onRestartLater: "{clientChannel}.restartLater",
-                        onUndoChanges: "{clientChannel}.undoChanges"
+                        onRestartNow:   "{channel}.restartNow",
+                        onUndoChanges:  "{channel}.undoChanges",
 
+                        onSignInRequested: "{channel}.requestSignIn"
+                    }
+                }
+            },
+
+            // Listen for window key events...
+            windowKeyListener: {
+                type: "fluid.component",
+                options: {
+                    gradeNames: "gpii.app.keyListener",
+                    target: {
+                        expander: {
+                            funcName: "jQuery",
+                            args: [window]
+                        }
+                    },
+                    events: {
+                        onEscapePressed: null
+                    },
+                    listeners: {
+                        onEscapePressed: "{channel}.close"
                     }
                 }
             }

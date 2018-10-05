@@ -16,55 +16,32 @@
 
 "use strict";
 (function (fluid) {
-    var gpii = fluid.registerNamespace("gpii"),
-        shell = require("electron").shell;
-
     fluid.defaults("gpii.psp.footer", {
         gradeNames: ["fluid.viewComponent"],
         selectors: {
-            keyOutBtn: ".flc-keyOutBtn",
             helpBtn: ".flc-helpBtn"
         },
-        events: {
-            onKeyOut: null
+        model: {
+            messages: {
+                help: null
+            }
         },
         components: {
-            keyOutBtn: {
-                type: "gpii.psp.widgets.button",
-                container: "{that}.dom.keyOutBtn",
-                options: {
-                    label: "{footer}.options.labels.keyOut",
-                    invokers: {
-                        "onClick": "{footer}.events.onKeyOut.fire"
-                    }
-                }
-            },
             helpBtn: {
                 type: "gpii.psp.widgets.button",
                 container: "{that}.dom.helpBtn",
                 options: {
-                    label: "{footer}.options.labels.help",
+                    model: {
+                        label: "{footer}.model.messages.help"
+                    },
                     invokers: {
-                        "onClick": "gpii.psp.openUrl({footer}.options.urls.help)"
+                        "onClick": "gpii.psp.openUrlExternally({footer}.options.urls.help)"
                     }
                 }
             }
         },
         urls: {
             help: "http://pmt.gpii.org/help"
-        },
-        labels: {
-            keyOut: "Key Out",
-            help: "Help"
         }
     });
-
-    /**
-     * Opens the passed url externally using the default browser for the
-     * OS (or set by the user).
-     * @param url {String} The url to open externally.
-     */
-    gpii.psp.openUrl = function (url) {
-        shell.openExternal(url);
-    };
 })(fluid);

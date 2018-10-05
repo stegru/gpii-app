@@ -2,14 +2,9 @@
     "type": "gpii.appWithTaskTray",
     "options": {
         "gradeNames": ["fluid.component"],
-        "distributeOptions": {
-            "distributeTaskTray": {
-                "record": "gpii.appWrapper",
-                "target": "{that flowManager}.options.gradeNames"
-            }
-        }
+        "distributeOptions": {}
     },
     "mergeConfigs": [
-        "../node_modules/universal/gpii/configs/gpii.config.all.development.dr.production.json"
-     ]
+        "%gpii-app/configs/app.base.json"
+    ]
 }

@@ -3,17 +3,13 @@
     "options": {
         "gradeNames": ["fluid.component"],
         "distributeOptions": {
-            "distributeTaskTray": {
-                "record": "gpii.appWrapper",
-                "target": "{that flowManager}.options.gradeNames"
-            },
-            "distributePcpChannelConnector": {
+            "distributeDevPcpChannelConnector": {
                 "record": "gpii.app.dev.gpiiConnector",
                 "target": "{that gpiiConnector}.options.gradeNames"
             }
         }
     },
     "mergeConfigs": [
-        "../node_modules/universal/gpii/configs/gpii.config.all.development.dr.production.json"
-     ]
+        "%gpii-app/configs/app.base.json"
+    ]
 }

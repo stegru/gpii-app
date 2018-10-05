@@ -1,0 +1,11 @@
+/* Default theme styles */
+.fl-footer {
+    width: 100%;
+    padding: 4px;
+    margin-top: 0;
+}
+
+.fl-footer .flc-helpBtn {
+    float: right;
+    margin-right: 0;
+}

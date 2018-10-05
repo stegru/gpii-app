@@ -79,13 +79,222 @@
         renderOnInit: true
     });
 
+    fluid.defaults("gpii.psp.widgets.imageDropdownPresenter", {
+        gradeNames: "fluid.viewComponent",
+
+        selectors: {
+            itemImage: ".flc-imageDropdown-itemImage",
+            itemText: ".flc-imageDropdown-itemText"
+        },
+
+        styles: {
+            active: "active"
+        },
+
+        model: {
+            item: {}
+        },
+
+        listeners: {
+            "onCreate.addClickHandler": {
+                this: "{that}.container",
+                method: "click",
+                args: "{that}.updateSelection"
+            }
+        },
+
+        modelListeners: {
+            "item.name": {
+                this: "{that}.dom.itemText",
+                method: "text",
+                args: ["{change}.value"]
+            },
+            "item.imageSrc": {
+                this: "{that}.dom.itemImage",
+                method: "attr",
+                args: ["src", "{change}.value"]
+            },
+            "{imageDropdown}.model.selection": {
+                funcName: "gpii.psp.widgets.imageDropdownPresenter.applyStyles",
+                args: ["{change}.value", "{that}.model.item", "{that}.container", "{that}.options.styles"]
+            }
+        },
+
+        invokers: {
+            updateSelection: {
+                this: "{dropdownItems}",
+                method: "updateSelection",
+                args: ["{that}.model.item"]
+            }
+        }
+    });
+
+    /**
+     * Applies the appropriate styles depending on whether the item is
+     * the selected item for the dropdown.
+     * @param {String} selection - The path of the selected item.
+     * @param {Object} item - The current image dropdown item.
+     * @param {jQuery} container - The DOM element representing the item.
+     * @param {Object} styles - A hash containing mapping between CSS class
+     * keys and class names.
+     */
+    gpii.psp.widgets.imageDropdownPresenter.applyStyles = function (selection, item, container, styles) {
+        container.toggleClass(styles.active, item.path === selection);
+    };
+
+    /**
+     * A component which represents a dropdown whose elements have both an
+     * image (not mandatory) and text. As the `options` elements within a
+     * `select` tag does not support images, this component uses the custom
+     * dropdown mechanism provided by bootstrap. The component expects to
+     * be provided with an `items` array whose elements will be visually
+     * represented in the dropdown. Each item must have a `path` property
+     * which should uniquely identify the item and a `name` property which
+     * is the text to be displayed to the user. As already mentioned, the
+     * `imageSrc` property which is the URL of the image to be used in not
+     * obligatory. The `selection` model property is the path of the
+     * currently selected item in the image dropdown. It will be updated
+     * based on the user input (and of course based on the data with which
+     * the component is initialized).
+     */
+    fluid.defaults("gpii.psp.widgets.imageDropdown", {
+        gradeNames: ["gpii.psp.widgets.attrsExpander", "fluid.viewComponent"],
+
+        model: {
+            items: [],
+            selection: null,
+            selectedItem: {}
+        },
+
+        modelListeners: {
+            selectedItem: {
+                funcName: "gpii.psp.widgets.imageDropdown.updateDropdownHeader",
+                args: [
+                    "{that}.dom.selectedItemImage",
+                    "{that}.dom.selectedItemText",
+                    "{change}.value"
+                ]
+            },
+            items: {
+                this: "{that}.events.onItemsChanged",
+                method: "fire"
+            }
+        },
+
+        modelRelay: {
+            "selectedItem": {
+                target: "selectedItem",
+                singleTransform: {
+                    type: "fluid.transforms.free",
+                    func: "gpii.psp.widgets.imageDropdown.getSelectedItem",
+                    args: ["{that}.model.items", "{that}.model.selection"]
+                }
+            }
+        },
+
+        selectors: {
+            selectedItemImage: ".flc-imageDropdown-selectedItemImage",
+            selectedItemText: ".flc-imageDropdown-selectedItemText",
+            dropdownMenu: ".flc-imageDropdown-menu"
+        },
+
+        events: {
+            onItemsChanged: null
+        },
+
+        listeners: {
+            "onCreate.addAttrs": {
+                "this": "{that}.container",
+                method: "attr",
+                args: ["{that}.options.attrs"]
+            },
+            // Needed because the `dropdownItems` subcomponent will not be created
+            // if the `imageDropdown` component has `items` provided initially.
+            "onCreate.notifyItemsChanged": {
+                func: "{that}.events.onItemsChanged.fire"
+            }
+        },
+
+        components: {
+            dropdownItems: {
+                type: "gpii.psp.repeater",
+                createOnEvent: "onItemsChanged",
+                container: "{that}.dom.dropdownMenu",
+                options: {
+                    model: {
+                        items: "{imageDropdown}.model.items",
+                        selection: "{imageDropdown}.model.selection"
+                    },
+                    dynamicContainerMarkup: {
+                        container: "<li class=\"%containerClass\"></li>",
+                        containerClassPrefix: "flc-imageDropdown-item"
+                    },
+                    handlerType: "gpii.psp.widgets.imageDropdownPresenter",
+                    markup: {
+                        dropdownItem:
+                            "<a href=\"#\">" +
+                                "<img class=\"flc-imageDropdown-itemImage\">" +
+                                "<span class=\"flc-imageDropdown-itemText\"></span>" +
+                            "</a>"
+                    },
+                    invokers: {
+                        getMarkup: {
+                            funcName: "fluid.identity",
+                            args: ["{that}.options.markup.dropdownItem"]
+                        },
+                        updateSelection: {
+                            changePath: "selection",
+                            value: "{arguments}.0.path"
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    /**
+     * Given the array of available items and the `path` of the currently selected
+     * item, returns the object representing the selected item.
+     * @param {Array} items - The array of items which are visualized in the image
+     * dropdown.
+     * @param {String} selection - The `path` of the currently selected item.
+     * @return {Object} The currently selected item object.
+     */
+    gpii.psp.widgets.imageDropdown.getSelectedItem = function (items, selection) {
+        return fluid.find_if(items, function (item) {
+            return item.path === selection;
+        });
+    };
+
+    /**
+     * Updates the header of the image dropdown based on the selected item by
+     * setting the appropriate image source and text.
+     * @param {jQuery} selectedItemImage - A jQuery object representing the image of
+     * the selected dropdown item.
+     * @param {jQuery} selectedItemText - A jQuery object representing the text of
+     * the selected dropdown item.
+     * @param {Object} selectedItem - The currently selected item object.
+     */
+    gpii.psp.widgets.imageDropdown.updateDropdownHeader = function (selectedItemImage, selectedItemText, selectedItem) {
+        var itemImageSrc = fluid.get(selectedItem, "imageSrc") || "",
+            itemText = fluid.get(selectedItem, "name") || "";
+
+        selectedItemImage.attr("src", itemImageSrc);
+        selectedItemText.text(itemText);
+    };
+
     fluid.defaults("gpii.psp.widgets.button", {
         gradeNames: ["fluid.viewComponent"],
-        label: null,
+
+        model: {
+            label: null // Expected from implementor
+        },
+
         selectors: {
             label: ".flc-btnLabel"
         },
         attrs: {
+            "aria-label": "{button}.model.decButtonLabel"
             // user provided attributes
         },
         listeners: {
@@ -94,20 +303,22 @@
                 method: "attr",
                 args: ["{that}.options.attrs"]
             },
-            "onCreate.bindClickEvt": {
+            "onCreate.addClickHandler": {
                 "this": "{that}.container",
                 method: "click",
                 args: ["{that}.onClick"]
-            },
-            "onCreate.initText": {
+            }
+        },
+        modelListeners: {
+            label: {
                 "this": "{that}.dom.label",
                 method: "text",
-                args: ["{that}.options.label"]
+                args: ["{that}.model.label"]
             }
         },
         invokers: {
             onClick: {
-                funcName: "fluid.notImplemented"
+                funcName: "fluid.identity"
             }
         }
     });
@@ -146,8 +357,8 @@
     /**
      * A function which is executed while the user is dragging the
      * thumb of a slider.
-     * @param that {Component} An instance of a slider component.
-     * @param container {jQuery} The jQuery object representing the
+     * @param {Component} that - An instance of a slider component.
+     * @param {jQuery} container - The jQuery object representing the
      * slider input.
      */
     gpii.psp.widgets.onSlide = function (that, container) {
@@ -155,6 +366,7 @@
         that.applier.change("stringValue", value, null, "slide");
     };
 
+    // Not used currently. Remove it if it won't be used in the future.
     fluid.defaults("gpii.psp.widgets.slider", {
         gradeNames: ["fluid.textfieldSlider"],
         components: {
@@ -178,7 +390,7 @@
                             args: ["{that}", "{that}.container"]
                         },
                         onSlideEnd: {
-                            changePath: "number",
+                            changePath: "value",
                             value: "{that}.model.value"
                         }
                     }
@@ -187,52 +399,13 @@
         }
     });
 
-
-    /**
-     * The `stepper` has two important model properties: `number` and
-     * `value`. `number` is the actual value that this input represents.
-     * `value` represents a temporary state which may not always be the
-     * same as `number` (e.g. while the user is dragging the thumb of the
-     * slider, `value` changes continuously while `number` changes only
-     * when the user releases the thumb). This means that `number` should
-     * be used if changes to the actual model value should be observed from
-     * outer components.
-     */
     fluid.defaults("gpii.psp.widgets.stepper", {
         gradeNames: ["gpii.psp.widgets.attrsExpander", "fluid.textfieldStepper"],
         scale: 2,
         attrs: {
             // "aria-labelledby": null
         },
-        modelRelay: {
-            "value": {
-                target: "value",
-                singleTransform: {
-                    type: "fluid.transforms.identity",
-                    input: "{that}.model.number"
-                }
-            }
-        },
-        modelListeners: {
-            "value": {
-                changePath: "number",
-                value: "{change}.value",
-                excludeSource: ["init", "slide"]
-            }
-        },
         components: {
-            slider: {
-                type: "gpii.psp.widgets.slider",
-                container: "{that}.container",
-                options: {
-                    model: "{stepper}.model",
-                    scale: "{stepper}.options.scale",
-                    selectors: {
-                        textfield: ".flc-textfieldStepper-field"
-                    },
-                    attrs: "{stepper}.options.attrs"
-                }
-            },
             textfield: {
                 options: {
                     model: "{stepper}.model"
