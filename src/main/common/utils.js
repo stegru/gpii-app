@@ -194,10 +194,43 @@ gpii.app.isPointInRect = function (point, rectangle) {
  * In most cases, there's only a single USB drive. But if there's more than one USB drive,
  * then those that do not contain the token file are shown.
  */
-gpii.app.openUSB = function() {
+gpii.app.openUSB = function () {
     gpii.windows.getUserUsbDrives().then(function (paths) {
         fluid.each(paths, function (path) {
             child_process.exec("explorer.exe \"" + path + "\"");
         });
+    });
+};
+
+/**
+ * Ejects a USB drive - the selected USB drive is the same as the one that would be opened by openUSB.
+ * This performs the same action as "Eject" from the right-click-menu on the drive in Explorer.
+ */
+gpii.app.ejectUSB = function () {
+
+    // Powershell to invoke the "Eject" verb of the drive icon in my computer, which looks something like:
+    //  ((Shell32.Folder)shell).NameSpace(ShellSpecialFolderConstants.ssfDRIVES) // Get "My Computer"
+    //    .ParseName(x:\)    // Get the drive.
+    //    .InvokeVerb(Eject) // Invoke the "Eject" verb of the drive.
+    // Inspired by https://serverfault.com/a/580298r
+    //
+    // It's possible to perform this in C#, however powershell will be used because it needs to be performed in a
+    // 64-bit process, perhaps due to it interacting with the shell.
+    var command = "$drives = (New-Object -comObject Shell.Application).Namespace(0x11)";
+
+    gpii.windows.getUserUsbDrives().then(function (paths) {
+        if (paths.length > 0) {
+            // Call the eject command for each drive.
+            fluid.each(paths, function (path) {
+                command += "; $drives.ParseName('" + path[0] + ":\\').InvokeVerb('Eject')";
+            });
+
+            // The powershell process still needs to hang around, because if the drive is in use it will open a dialog
+            // which is owned by the process.
+            command += "; Sleep 100";
+            // Needs to be called from a 64-bit process
+            gpii.windows.nativeExec("powershell.exe -NoProfile -NonInteractive -ExecutionPolicy ByPass -Command "
+                + command);
+        }
     });
 };
