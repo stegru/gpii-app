@@ -24,7 +24,6 @@ var path = require("path");
 
 var DEFAULT_PARSER = {"json": JSON};
 
-
 /**
  * Represents a single messages bundle, containing label names and messages for them.
  *
@@ -227,7 +226,7 @@ gpii.app.messageBundlesCompiler.mergeMessageBundles = function (loadedBundles) {
  * @param {FileParsers} parsers - Available parsers for bundle files.
  * @return {Object} The compiled message bundles map.
  */
-function compileMessageBundles(bundlesDirs, defaultLocale, parsers) {
+gpii.app.messageBundlesCompiler.compileMessageBundles = function (bundlesDirs, defaultLocale, parsers) {
     parsers = parsers || DEFAULT_PARSER;
 
     var messageBundlesList;
@@ -236,8 +235,9 @@ function compileMessageBundles(bundlesDirs, defaultLocale, parsers) {
         messageBundlesList = gpii.app.messageBundlesCompiler.loadMessageBundles(bundlesDirs, parsers);
     } catch (err) {
         // ENOENT, SyntaxError
-        fluid.fail(err.message);
-        throw err;
+        fluid.fail("Messages Compiler: Problem loading message bundles - ", err.message);
+        // return something not particularly useful
+        return null;
     }
 
     var rawMessageBundles = gpii.app.messageBundlesCompiler.mergeMessageBundles(messageBundlesList);
@@ -246,5 +246,4 @@ function compileMessageBundles(bundlesDirs, defaultLocale, parsers) {
     return compiledMessageBundle;
 };
 
-
-module.exports.compileMessageBundles = compileMessageBundles;
+module.exports.compileMessageBundles = gpii.app.messageBundlesCompiler.compileMessageBundles;

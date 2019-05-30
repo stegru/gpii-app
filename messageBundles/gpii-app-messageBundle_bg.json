@@ -1,13 +1,15 @@
 {
     "gpii_app_menu_about": "Относно...",
     "gpii_app_menu_openQss": "Отвори Morphic",
-    "gpii_app_menu_keyedIn": "Вписан с %snapsetName",
+    "gpii_app_menu_keyedIn": "Вход с профил",
     "gpii_app_menu_keyOut": "Ресетни Morphic",
 
     "gpii_app_tray_defaultTooltip": "Morphic: В готовност",
-    "gpii_app_tray_prefSetTooltip": "Morphic: %prefSet",
+    "gpii_app_tray_prefSetTooltip": "Morphic: Вход с профил",
 
     "gpii_psp_mainWindow_titlebarAppName": "Morphic панел с настройки",
+
+    "gpii_app_qssWrapper_restartWarningNotification": "За да видите резултатът от промяната на %settingTitle, може да се наложи да рестартирате някои приложения",
 
     "gpii_psp_signIn_signInHeader": "Никой не е вписан",
 
@@ -21,6 +23,9 @@
     "gpii_psp_signIn_signInButton": "Впиши ме",
     "gpii_psp_signIn_signUpButton": "Създай акаунт",
     "gpii_psp_signIn_forgotPasswordButton": "Забравена парола?",
+
+    "gpii_psp_widgets_switch_on": "Вкл",
+    "gpii_psp_widgets_switch_off": "Изкл",
 
     "gpii_psp_header_autosaveText": "Автоматично запазване е включено",
     "gpii_psp_header_keyOut":"Отпиши се",
@@ -44,10 +49,17 @@
     "gpii_psp_aboutDialog_update": "Провери за ъпдейти",
     "gpii_psp_aboutDialog_userListenersText": "Средства за вписване за тази машина: %listeners",
     "gpii_psp_aboutDialog_version": "версия %version",
+    "gpii_psp_aboutDialog_morphicHome": "Отиди на Morphic Home",
+    "gpii_psp_aboutDialog_submitSuggestions": "Изпрати предложения",
 
     "gpii_psp_footer_help": "Помощ",
 
     "gpii_qss_toggleButtonPresenter_caption": "[ВКЛ.]",
 
-    "gpii_psp_qssWidget_learnMore": "Научи повече..."
+    "gpii_psp_qssWidget_learnMore": "Научи повече...",
+
+    "gpii_qss_saveButtonPresenter_notification": {
+        "keyedOut": "За да запазите вашите настройки трябва да си създадете Morphic акаунт. Отидете на <a href=\"%accountUrl\">%accountUrl</a>.",
+        "keyedIn": "Вашите настройки са запазени в Morphic Cloud."
+    }
 }

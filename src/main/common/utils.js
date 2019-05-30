@@ -17,6 +17,7 @@
 var os            = require("os");
 var fluid         = require("infusion");
 var electron      = require("electron");
+var child_process = require("child_process");
 
 var gpii = fluid.registerNamespace("gpii");
 fluid.registerNamespace("gpii.app");
@@ -57,8 +58,8 @@ gpii.browserWindow.computeWindowSize = function (width, height, offsetX, offsetY
     height = Math.min(height, maxHeight);
 
     return {
-        width:  Math.ceil(width),
-        height: Math.ceil(height)
+        width:  Math.round(width),
+        height: Math.round(height)
     };
 };
 
@@ -78,20 +79,27 @@ gpii.browserWindow.computeWindowPosition = function (width, height, offsetX, off
     offsetX = Math.max(0, (offsetX || 0));
     offsetY = Math.max(0, (offsetY || 0));
 
-    var screenSize = electron.screen.getPrimaryDisplay().workAreaSize;
+    var screenSize = electron.screen.getPrimaryDisplay().workArea;
 
     // position relatively to the bottom right corner
     // note that as offset is positive we're restricting window
     // from being position outside the screen
-    var desiredX = Math.ceil(screenSize.width - (width + offsetX));
-    var desiredY = Math.ceil(screenSize.height - (height + offsetY));
+    var desiredX = Math.round(screenSize.width - (width + offsetX));
+    var desiredY = Math.round(screenSize.height - (height + offsetY));
 
     // avoids overflowing at the top
     desiredY = Math.max(desiredY, 0);
 
+    // Electron has issues positioning a `BrowserWindow` whose x or y coordinate is
+    // -0 (event though +0 === -0). Hence, this safety check.
+    desiredX = desiredX || 0;
+    desiredY = desiredY || 0;
+
     return {
-        x: desiredX,
-        y: desiredY
+        // Offset it to factor in the start of the work area, which takes into account docked windows like magnifier and
+        // Read&Write.
+        x: desiredX + screenSize.x,
+        y: desiredY + screenSize.y
     };
 };
 
@@ -104,8 +112,8 @@ gpii.browserWindow.computeWindowPosition = function (width, height, offsetX, off
  */
 gpii.browserWindow.computeCentralWindowPosition = function (width, height) {
     var screenSize = electron.screen.getPrimaryDisplay().workAreaSize,
-        desiredX = Math.ceil((screenSize.width - width) / 2),
-        desiredY = Math.ceil((screenSize.height - height) / 2);
+        desiredX = Math.round((screenSize.width - width) / 2),
+        desiredY = Math.round((screenSize.height - height) / 2);
 
     desiredX = Math.max(desiredX, 0);
     desiredY = Math.max(desiredY, 0);
@@ -161,4 +169,37 @@ gpii.app.notifyWindow = function (browserWindow, messageChannel, message) {
  */
 gpii.app.isHashNotEmpty = function (hash) {
     return hash && fluid.keys(hash).length > 0;
+};
+
+/**
+ * Determines if a point is contained within a rectangle (including whether it
+ * lies on any of the rectangle's sides).
+ * @param {Object} point - The point to check
+ * @param {Number} point.x - The x coordinate of the point.
+ * @param {Number} point.y - The y coordinate of the point.
+ * @param {Object} rectangle - The rectangle which is to be checked.
+ * @param {Number} rectangle.x - The x coordinate of the rectangle.
+ * @param {Number} rectangle.y - The y coordinate of the rectangle.
+ * @param {Number} rectangle.width - The width of the rectangle.
+ * @param {Number} rectangle.height - The height of the rectangle.
+ * @return {Boolean} - `true` if the point is contained within the specified
+ * rectangle and `false` otherwise.
+ */
+gpii.app.isPointInRect = function (point, rectangle) {
+    return rectangle.x <= point.x && point.x <= rectangle.x + rectangle.width &&
+           rectangle.y <= point.y && point.y <= rectangle.y + rectangle.height;
+};
+
+/**
+ * A custom function for handling activation of the "Open USB" QSS button.
+ *
+ * In most cases, there's only a single USB drive. But if there's more than one USB drive,
+ * then those that do not contain the token file are shown.
+ */
+gpii.app.openUSB = function() {
+    gpii.windows.getUserUsbDrives().then(function (paths) {
+        fluid.each(paths, function (path) {
+            child_process.exec("explorer.exe \"" + path + "\"");
+        });
+    });
 };

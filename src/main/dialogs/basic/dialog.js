@@ -59,7 +59,11 @@ fluid.defaults("gpii.app.dialog", {
         offset: {
             x: 0,
             y: 0
-        }
+        },
+
+        scaleFactor: 1,                                   // the actual scale factor
+        width:       "{that}.options.config.attrs.width", // the actual width of the content
+        height:      "{that}.options.config.attrs.height" // the actual height of the content
     },
 
     events: {
@@ -81,6 +85,13 @@ fluid.defaults("gpii.app.dialog", {
         // dialog creation
         positionOnInit: true,
 
+        // Whether to the destroy the component after its dialog (BrowserWindow) is destroyed. It
+        // is more convenient that the component gets destroyed as it can't behave properly without
+        // its BrowserWindow. Note that the `closed` event fires both when it is closed programatically
+        // or via the close button in the upper right corner but it might not be fired when the `destroy`
+        // method is used on the BrowserWindow.
+        destroyWithWindow: true,
+
         // Whether the window is hidden offscreen and should be treated as such. Its usage is
         // mainly assotiated with the `gpii.app.dialog.offScreenHidable` grade
         hideOffScreen: false,
@@ -89,15 +100,22 @@ fluid.defaults("gpii.app.dialog", {
         // this setting is active the only way for a window to be closed is through
         // the usage of the `destroy` method and a close command would simply hide the window.
         // This is mainly needed to avoid closing a window using the Alf + F4 combination
-        closable: false,
+        destroyOnClose: false,
 
         // Whether to register a listener for BrowserWindow "readiness". The BrowserWindow is ready
-        // once all its components are created.
+        // once all its components are created. Once a window is ready the `onDialogReady` event will
+        // be fired.
+        // N.B. In order this event to be triggered, the corresponding renderer process should
+        // implement the mechanism for notifying readiness that is using
+        // the "gpii.psp.baseWindowCmp.signalDialogReady" grade
         awaitWindowReadiness: false,
 
         restrictions: {
             minHeight: null
         },
+
+        // Forbids the user from changing the zoom level in a BrowserWindow
+        disablePinchZoom: true,
 
         // params for the BrowserWindow instance
         params: null,
@@ -127,9 +145,6 @@ fluid.defaults("gpii.app.dialog", {
         }
     },
     members: {
-        width:  "{that}.options.config.attrs.width", // the actual width of the content
-        height: "{that}.options.config.attrs.height", // the actual height of the content
-
         /**
          * Blurrable dialogs will have the `gradeNames` property which will hold all gradeNames
          * of the containing component. Useful when performing checks about the component if
@@ -161,6 +176,16 @@ fluid.defaults("gpii.app.dialog", {
             args: ["{that}", "{change}.value", "{that}.options.config.showInactive"],
             namespace: "impl",
             excludeSource: "init"
+        },
+        scaleFactor: {
+            funcName: "gpii.app.dialog.rescaleDialog",
+            args: [
+                "{that}",
+                "{change}.value",
+                "{change}.oldValue"
+            ],
+            namespace: "rescaleDialog",
+            excludeSource: "init"
         }
     },
     listeners: {
@@ -172,26 +197,48 @@ fluid.defaults("gpii.app.dialog", {
             funcName: "gpii.app.dialog.registerDailogReadyListener",
             args: "{that}"
         },
+        "onCreate.applyScaleFactor": {
+            funcName: "gpii.app.dialog.rescaleDialog",
+            args: ["{that}", "{that}.model.scaleFactor"]
+        },
         "onDestroy.cleanupElectron": {
             this: "{that}.dialog",
-            method: "destroy"
+            method: "destroy",
+            priority: "last"
         }
     },
     invokers: {
+        // Returns object with the pre-calculated scaled width, height, and offset
+        // of the buttons. Takes the old and the new scale factors as arguments
+        getScaledMetrics: {
+            funcName: "gpii.app.dialog.getScaledMetrics",
+            args: [
+                "{that}",
+                "{arguments}.0", // scaleFactor
+                "{arguments}.1"  // oldScaleFactor
+            ]
+        },
+        // Returns the total width of the component which must be taken into account when
+        // fitting the window into the available screen space. Usually it will be only the
+        // width of the component but in some special cases (such as the QSS) it may differ.
+        getExtendedWidth: {
+            funcName: "fluid.identity",
+            args: ["{that}.model.width"]
+        },
         // Changing the position of a BrowserWindow when the scale factor is different than
         // the default one (100%) changes the window's size (either width or height).
         // To ensure its size is correct simply set the size of the window again with the one
         // that has already been stored.
         // Related Electron issue: https://github.com/electron/electron/issues/9477
-        // Once fixed we can move back to uising the native `setPosition` method of the
+        // Once fixed we can move back to using the native `setPosition` method of the
         // `BrowserWindow` instead of `setBounds`.
         setPosition: {
             funcName: "gpii.app.dialog.setBounds",
             args: [
                 "{that}",
                 "{that}.options.config.restrictions",
-                "{that}.width",
-                "{that}.height",
+                "{that}.model.width",
+                "{that}.model.height",
                 "{arguments}.0", // offsetX
                 "{arguments}.1"  // offsetY
             ]
@@ -244,8 +291,8 @@ fluid.defaults("gpii.app.dialog", {
             method: "focus"
         },
         close: {
-            this: "{that}.dialog",
-            method: "close"
+            funcName: "gpii.app.dialog.close",
+            args: ["{that}"]
         }
     }
 });
@@ -295,17 +342,24 @@ gpii.app.dialog.makeDialog = function (that, windowOptions, url, params) {
     // proposed in: https://github.com/electron/electron/issues/1095
     dialog.params = params || {};
 
-    // ensure the window is hidden properly
-    if (that.options.config.hideOffScreen && !windowOptions.show) {
-        gpii.app.dialog.offScreenHidable.moveOffScreen(dialog);
-        dialog.show();
-    }
-
-    if (!that.options.config.closable) {
+    if (!that.options.config.destroyOnClose) {
         // As proposed in https://github.com/electron/electron/issues/6702
         dialog.on("close", function (e) {
             that.hide();
             e.preventDefault();
+        });
+    }
+
+    if (that.options.config.disablePinchZoom) {
+        // Followed this approach https://github.com/electron/electron/issues/8793#issuecomment-334971232
+        dialog.webContents.on("did-finish-load", function () {
+            // These calls must only happen if the dialog and its contents have not been destroyed, which might
+            // occur in test runs.
+            if (!dialog.isDestroyed() && !dialog.webContents.isDestroyed()) {
+                dialog.webContents.setZoomFactor(1);
+                dialog.webContents.setVisualZoomLevelLimits(1, 1);
+                dialog.webContents.setLayoutZoomLevelLimits(0, 0);
+            }
         });
     }
 
@@ -319,6 +373,76 @@ gpii.app.dialog.makeDialog = function (that, windowOptions, url, params) {
 gpii.app.dialog.positionOnInit = function (that) {
     if (that.options.config.positionOnInit) {
         that.setPosition();
+    }
+
+    if (that.options.config.destroyWithWindow) {
+        that.dialog.on("closed", function () {
+            // ensure there isn't some inconsistency
+            // it might be the case that the component is destroyed before
+            // the BrowserWindow itself
+            if (!fluid.isDestroyed(that)) {
+                that.destroy();
+            }
+        });
+    }
+};
+
+/**
+ * Given the new and the previous `scaleFactor` this function computes the new
+ * width, height, and offset of the component's `BrowserWindow`. In the typical
+ * case, the parameters will be calculated by applying the ratio of the new and
+ * the previous `scaleFactor`, but under some circumstances this may differ.
+ * For example, the y-offset of the PSP should always be equal to the height
+ * of the QSS.
+ * @param {Component} model - The `gpii.app.dialog.model` instance.
+ * @param {Number} scaleFactor - The new scale factor to be applied.
+ * @param {Number} oldScaleFactor - The previous scale factor.
+ * @return {Object} The new width, height, and offset of the `BrowserWindow`.
+ */
+gpii.app.dialog.getScaledMetrics = function (model, scaleFactor, oldScaleFactor) {
+    return {
+        width: scaleFactor * model.width / oldScaleFactor,
+        height: scaleFactor * model.height / oldScaleFactor,
+        offset: {
+            x: scaleFactor * model.offset.x / oldScaleFactor,
+            y: scaleFactor * model.offset.y / oldScaleFactor
+        }
+    };
+};
+
+/**
+ * When the `scaleFactor` changes, this function takes care of adjusting the
+ * dimensions and position of the dialog as well as of applying the new scale
+ * factor to the contents of the `BrowserWindow`.
+ * @param {Component} that - The `gpii.app.dialog` instance.
+ * @param {Number} scaleFactor - The new scale factor to be applied.
+ * @param {Number} oldScaleFactor - The previous scale factor.
+ */
+gpii.app.dialog.rescaleDialog = function (that, scaleFactor, oldScaleFactor) {
+    scaleFactor = scaleFactor || 1;
+    oldScaleFactor = oldScaleFactor || 1;
+
+    that.applier.change("", gpii.app.dialog.getScaledMetrics(that.model, scaleFactor, oldScaleFactor));
+
+    gpii.app.dialog.setDialogZoom(that.dialog, scaleFactor);
+    that.setBounds();
+};
+
+/**
+ * Applies a custom scaling factor to the whole HTML page of the dialog.
+ * @param {BrowserWindow} dialog - The `BrowserWindow` whose content needs
+ * to be scaled up or down.
+ * @param {Number} scaleFactor - The scaling factor to be applied.
+ */
+gpii.app.dialog.setDialogZoom = function (dialog, scaleFactor) {
+    var script = fluid.stringTemplate("jQuery(\"body\").css(\"zoom\", %scaleFactor)", {
+        // give a slightly smaller scaleFactor to the renderer process to ensure
+        // there's a sufficient margin on the left
+        scaleFactor: Math.floor(scaleFactor * 100) / 100
+    });
+
+    if (dialog) {
+        dialog.webContents.executeJavaScript(script);
     }
 };
 
@@ -359,6 +483,14 @@ gpii.app.dialog.show = function (that) {
     } else {
         that.applier.change("isShown", true);
     }
+};
+
+gpii.app.dialog.close = function (that) {
+    // update the dialog shown state
+    that.hide();
+
+    // init destroying
+    that.dialog.close();
 };
 
 /**
@@ -408,18 +540,19 @@ gpii.app.dialog.setBounds = function (that, restrictions, width, height, offsetX
     // As default use currently set values
     offsetX  = fluid.isValue(offsetX) ? offsetX : that.model.offset.x;
     offsetY  = fluid.isValue(offsetY) ? offsetY : that.model.offset.y;
-    width    = fluid.isValue(width)   ? width : that.width;
-    height   = fluid.isValue(height)  ? height : that.height;
+    width    = fluid.isValue(width)   ? width : that.model.width;
+    height   = fluid.isValue(height)  ? height : that.model.height;
 
     // apply restrictions
     if (restrictions.minHeight) {
-        height = Math.max(height, restrictions.minHeight);
+        var scaleFactor = that.model.scaleFactor;
+        height = Math.max(height, scaleFactor * restrictions.minHeight);
     }
 
     var bounds = gpii.browserWindow.computeWindowBounds(width, height, offsetX, offsetY);
 
-    that.width = bounds.width;
-    that.height = bounds.height;
+    that.applier.change("width", bounds.width);
+    that.applier.change("height", bounds.height);
     that.applier.change("offset", { x: offsetX, y: offsetY });
 
     that.dialog.setBounds(bounds);
@@ -437,19 +570,19 @@ gpii.app.dialog.setRestrictedSize = function (that, restrictions, width, height)
     // ensure the whole window is visible
     var offset = that.model.offset;
 
-    width  = width  || that.width;
-    height = height || that.height;
+    width  = width  || that.model.width;
+    height = height || that.model.height;
 
     // apply restrictions
     if (restrictions.minHeight) {
-        height = Math.max(height, restrictions.minHeight);
+        var scaleFactor = that.model.scaleFactor;
+        height = Math.max(height, scaleFactor * restrictions.minHeight);
     }
 
     var size = gpii.browserWindow.computeWindowSize(width, height, offset.x, offset.y);
 
-    that.width  = size.width;
-    that.height = size.height;
-
+    that.applier.change("width", size.width);
+    that.applier.change("height", size.height);
     that.dialog.setSize(size.width, size.height);
 };
 
@@ -462,6 +595,20 @@ fluid.defaults("gpii.app.i18n.channel", {
 
     modelListeners: {
         "{app}.model.locale": {
+            func: "{that}.handleLocaleChange"
+        }
+    },
+
+    invokers: {
+        handleLocaleChange: {
+            funcName: "gpii.app.i18n.channel.handleLocaleChange",
+            args: [
+                "{that}",
+                "{dialog}.dialog",
+                "{app}.model.locale"
+            ]
+        },
+        notifyLocaleChange: {
             funcName: "gpii.app.notifyWindow",
             args: [
                 "{dialog}.dialog",
@@ -471,6 +618,22 @@ fluid.defaults("gpii.app.i18n.channel", {
         }
     }
 });
+
+
+/**
+ * Use the dialog instance to share the current locale. This is needed
+ * for the initial loading of the application as the locale might get
+ * updated before the dialog have been fully created.
+ * @param {Component} that - The `gpii.app.i18n.channel` instance
+ * @param {Object} dialog - An Electron BrowserWindow instance
+ * @param {String} locale - The current locale
+ */
+gpii.app.i18n.channel.handleLocaleChange = function (that, dialog, locale) {
+    // Update the locale of the dialog
+    dialog.locale = locale;
+
+    that.notifyLocaleChange();
+};
 
 /**
  * Listens for events from the renderer process (the BrowserWindow).

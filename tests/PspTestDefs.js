@@ -38,24 +38,69 @@ gpii.tests.psp.testKeyedOut = function (psp) {
     jqUnit.assertFalse("There is no keyed in user when the user keys out", psp.model.isKeyedIn);
 };
 
-/**
- * When a person uses the GPII app, the only way for him to open the PSP will be by
- * pressing the "Sign in" button in the QSS. However, in order to simplify the
- * testing of the PSP, we would directly call functions of the PSP component. This
- * will not affect the accuracy of the tests.
- */
-gpii.tests.psp.testDefs = {
-    name: "PSP integration tests",
-    expect: 7,
-    config: {
-        configName: "gpii.tests.dev.config",
-        configPath: "tests/configs"
+fluid.registerNamespace("gpii.tests.renderer.signIn");
+
+gpii.tests.renderer.signIn.triggerSignIn = function () {
+    var email = "some@somewhere.com",
+        pwd = "123456";
+
+    jQuery(".flc-emailTextInput").val(email);
+    jQuery(".flc-passwordInput").val(pwd);
+    jQuery(".flc-signInBtn").click();
+};
+
+gpii.tests.renderer.signIn.triggerSignInError = function () {
+    jQuery(".flc-signInBtn").click();
+    return [
+        jQuery(".flc-errorTitle").text(),
+        jQuery(".flc-errorDetails").text()
+    ];
+};
+
+var signInCrossSequence = [
+    {
+        func: "{that}.app.psp.show"
     },
-    gradeNames: ["gpii.test.common.testCaseHolder"],
-    sequence: [{
+    {
+        task: "gpii.test.invokeFunctionInWebContents",
+        args: [
+            "{that}.app.psp.dialog",
+            gpii.tests.renderer.signIn.triggerSignInError
+        ],
+        resolve: "jqUnit.assertDeepEq",
+        resolveArgs: [
+            "Error text should be shown in case of problem with the user credentials",
+            [
+                "Wrong name or password",
+                "Try again or use a key"
+            ],
+            "{arguments}.0"
+        ]
+    },
+
+    { // Clicking the close button in the PSP...
+        func: "gpii.test.invokeFunctionInWebContents",
+        args: [
+            "{that}.app.psp.dialog",
+            gpii.tests.renderer.signIn.triggerSignIn
+        ]
+    }, {
+        event: "{that}.app.psp.events.onSignInRequested",
+        listener: "jqUnit.assertDeepEq",
+        args: [
+            "Signing in with valid username and password is notified in the main",
+            [ "some@somewhere.com", "123456" ],
+            [ "{arguments}.0", "{arguments}.1" ]
+        ]
+    }
+];
+
+
+var basicPspInteractionsCrossSequence = [
+    {
         func: "{that}.app.psp.show"
     }, { // Clicking the close button in the PSP...
-        func: "gpii.test.executeJavaScript",
+        func: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             closePSP
@@ -74,7 +119,7 @@ gpii.tests.psp.testDefs = {
         args: ["multi_context"],
         resolve: "fluid.identity"
     }, { // Delay the tests a bit so that the UI can initialize properly.
-        task: "gpii.test.executeJavaScriptDelayed",
+        task: "gpii.test.executeJavaScriptInWebContentsDelayed",
         args: [
             "{that}.app.psp.dialog",
             decreaseVolume,
@@ -93,14 +138,14 @@ gpii.tests.psp.testDefs = {
             "{arguments}.0"
         ]
     }, { // Change a setting which shows a restart warning
-        task: "gpii.test.executeJavaScript",
+        task: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             decreaseMangification
         ],
         resolve: "fluid.identity"
     }, { // ...and click the "undo" button
-        task: "gpii.test.executeJavaScript",
+        task: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             undo
@@ -118,14 +163,14 @@ gpii.tests.psp.testDefs = {
             "{arguments}.0"
         ]
     }, { // Change a setting which shows a restart warning
-        task: "gpii.test.executeJavaScript",
+        task: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             decreaseMangification
         ],
         resolve: "fluid.identity"
     }, { // ...and click the "restart" button.
-        task: "gpii.test.executeJavaScript",
+        task: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             resetNow
@@ -138,12 +183,12 @@ gpii.tests.psp.testDefs = {
             "The magnifier setting has been correctly applied",
             {
                 path: "http://registry\\.gpii\\.net/common/magnification",
-                value: 1.4
+                value: 0.5
             },
             "{arguments}.0"
         ]
     }, {
-        task: "gpii.test.executeJavaScript",
+        task: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             selectBrightPrefSet
@@ -158,7 +203,7 @@ gpii.tests.psp.testDefs = {
             "{arguments}.0"
         ]
     }, {
-        func: "gpii.test.executeJavaScript",
+        func: "gpii.test.executeJavaScriptInWebContents",
         args: [
             "{that}.app.psp.dialog",
             keyOut
@@ -167,5 +212,40 @@ gpii.tests.psp.testDefs = {
         event: "{that}.app.events.onKeyedOut",
         listener: "gpii.tests.psp.testKeyedOut",
         args: ["{that}.app.psp"]
-    }]
+    },
+    {
+        task: "gpii.test.linger",
+        args: [1000],
+        resolve: "fluid.identity"
+    }
+];
+
+
+/**
+ * When a person uses the GPII app, the only way for him to open the PSP will be by
+ * pressing the "Sign in" button in the QSS. However, in order to simplify the
+ * testing of the PSP, we would directly call functions of the PSP component. This
+ * will not affect the accuracy of the tests.
+ */
+gpii.tests.psp.testDefs = {
+    name: "PSP integration tests",
+    expect: 9,
+    config: {
+        configName: "gpii.tests.dev.config",
+        configPath: "tests/configs"
+    },
+    distributeOptions: {
+        // disable `fluid.fail` call
+        record: {
+            "onSignInRequested.disable": {
+                func: "fluid.identity"
+            }
+        },
+        target: "{that psp}.options.listeners"
+    },
+    gradeNames: ["gpii.test.common.testCaseHolder"],
+    sequence: [
+        basicPspInteractionsCrossSequence,
+        signInCrossSequence
+    ]
 };

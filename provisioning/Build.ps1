@@ -30,7 +30,7 @@ Import-Module $bootstrapModule -Verbose -Force
 # # Run all the windows provisioning scripts
 # ############
 # TODO: Create function for downloading scripts and executing them.
-$windowsBootstrapURL = "https://raw.githubusercontent.com/GPII/windows/master/provisioning"
+$windowsBootstrapURL = "https://raw.githubusercontent.com/javihernandez/windows/GPII-3744/provisioning"
 try {
     $choco = Join-Path $originalBuildScriptPath "Chocolatey.ps1"
     Write-OutPut "Running windows script: $choco"
@@ -38,6 +38,15 @@ try {
     Invoke-Expression $choco
 } catch {
     Write-OutPut "Chocolatey.ps1 FAILED"
+    exit 1
+}
+try {
+    $couchdb = Join-Path $originalBuildScriptPath "CouchDB.ps1"
+    Write-OutPut "Running windows script: $couchdb"
+    iwr "$windowsBootstrapURL/CouchDB.ps1" -UseBasicParsing -OutFile $couchdb
+    Invoke-Expression $couchdb
+} catch {
+    Write-OutPut "CouchDB.ps1 FAILED"
     exit 1
 }
 try {
@@ -50,8 +59,18 @@ try {
     exit 1
 }
 
-$npm = "npm" -f $env:SystemDrive
-Invoke-Command $npm "install" $mainDir
+# Determine the right dir we are building from
+If ($mainDir -eq "C:\vagrant") {
+    Write-Verbose "I'm running from a GPII provisioned box. Changing into V: folder to avoid problems during 'npm install'"
+    #$npm = "npm" -f $env:SystemDrive
+    $npmInstallDir = "V:\"
+    net use V: \\vboxsvr\vagrant
+    pushd V:
+} Else {
+    $npmInstallDir = (get-item $originalBuildScriptPath).parent.FullName
+}
+
+Invoke-Command "npm" "install" $npmInstallDir
 
 # Currently required to generate the "mega" messages bundle (similar to Installer.ps1)
-Invoke-Command $npm "run build --prefix" $mainDir
+Invoke-Command "npm" "run build --prefix" $npmInstallDir
