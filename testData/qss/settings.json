@@ -63,12 +63,12 @@
         "learnMoreLink": "https://morphic.world/help/qsshelp#screen-capture",
         "value": ""
     }, {
-        "path": "http://registry\\.gpii\\.net/common/highContrastTheme",
+        "path": "http://registry\\.gpii\\.net/applications/com\\.microsoft\\.office.word-ribbon",
         "schema": {
             "type": "string",
             "keys": [
                 "regular-contrast",
-                "black-white",
+                "Basics+StandardSet",
                 "white-black",
                 "yellow-black",
                 "black-yellow",
