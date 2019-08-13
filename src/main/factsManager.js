@@ -14,7 +14,8 @@
  */
 "use strict";
 
-var fluid = require("infusion");
+var fluid = require("infusion"),
+    gpii = fluid.registerNamespace("gpii");
 
 /**
  * This component is responsible for retrieving, storing and updating (when applicable)
@@ -32,16 +33,89 @@ var fluid = require("infusion");
 fluid.defaults("gpii.app.factsManager", {
     gradeNames: ["fluid.modelComponent"],
     model: {
-        keyedInTimestamp: null
+        keyedInTimestamp: null,
+        // Number of interactions with the GPII app. Incremented whenever the PSP or QSS is
+        // opened, as well as when an actual user (i.e. different from `noUser`) keys in.
+        interactionsCount: null,
+
+        /* Whether the default preference set has no setting groups when the user keys in.
+         * Note that this value will NOT change if settings are added to the preference set
+         * subsequently in the same user session. The value of `isEmptyKey` for the "noUser"
+         * will always be `false`.
+         */
+        isEmptyKey: null
+    },
+    modelListeners: {
+        interactionsCount: {
+            func: "fluid.log",
+            args: [
+                "FactsManager: Changed interactionsCount: ",
+                "{change}.value"
+            ]
+        },
+        /* Ensure that the `isEmptyKey` is calculated only when the user has keyed in AND
+         * his preferences are delivered to the GPII app.
+         */
+        "{app}.model.preferences.gpiiKey": {
+            changePath: "isEmptyKey",
+            value: {
+                expander: {
+                    funcName: "gpii.app.factsManager.getIsEmptyKey",
+                    args: [
+                        "{that}",
+                        "{app}.model.isKeyedIn",
+                        "{app}.model.preferences.settingGroups"
+                    ]
+                }
+            },
+            excludeSource: "init"
+        }
     },
     listeners: {
-        "{app}.events.onKeyedIn": {
-            changePath: "keyedInTimestamp",
-            value: "@expand:Date.now()"
-        },
         "{app}.events.onKeyedOut": {
             changePath: "keyedInTimestamp",
             value: null
+        },
+        "{app}.events.onKeyedIn": [{
+            changePath: "keyedInTimestamp",
+            value: "@expand:Date.now()"
+        }, {
+            func: "{that}.increaseInteractionsCount"
+        }],
+        "{qssWrapper}.qss.events.onDialogShown": {
+            funcName: "{that}.increaseInteractionsCount"
+        },
+        "{psp}.events.onDialogShown": {
+            funcName: "{that}.increaseInteractionsCount"
+        }
+    },
+    invokers: {
+        increaseInteractionsCount: {
+            funcName: "gpii.app.factsManager.increaseInteractionsCount",
+            args: ["{that}"]
         }
     }
 });
+
+/**
+ * Increases the `interactionsCount` fact by 1.
+ * @param {Component} that - The `gpii.app.factsManager` instance.
+ */
+gpii.app.factsManager.increaseInteractionsCount = function (that) {
+    var interactionsCount = that.model.interactionsCount || 0;
+    that.applier.change("interactionsCount", interactionsCount + 1);
+};
+
+/**
+ * Returns whether the currently used key is empty, i.e. has no setting groups
+ * in its default preference set when the user keys in.
+ * @param {Component} that - The `gpii.app.factsManager` instance.
+ * @param {Boolean} isKeyedIn - Whether there is an actual keyed in user or not.
+ * @param {module:gpiiConnector.SettingGroup[]} settingGroups - An array with
+ * setting group items as per the parsed message in the `gpiiConnector`
+ * @return {Boolean} `true` if the current key has no setting groups or `false`
+ * otherwise.
+ */
+gpii.app.factsManager.getIsEmptyKey = function (that, isKeyedIn, settingGroups) {
+    return isKeyedIn && !gpii.app.settingGroups.hasSettings(settingGroups);
+};

@@ -27,7 +27,9 @@
      * should be taken based on it.
      *
      * Note that this view component assumes that its corresponding DOM element is
-     * an iframe.
+     * an iframe. After examining possible solutions, we determined that using an
+     * iframe is the best way to listen for changes in the dimensions of the
+     * corresponding DOM element.
      */
     fluid.defaults("gpii.psp.heightChangeListener", {
         gradeNames: ["fluid.viewComponent"],
@@ -36,6 +38,10 @@
                 "this": "@expand:jQuery({that}.container.0.contentWindow)",
                 method: "on",
                 args: ["resize", "{that}.events.onHeightChanged.fire"]
+            },
+            "onCreate.notifyHeightChanged": {
+                this: "{that}.events.onHeightChanged",
+                method: "fire"
             }
         },
         events: {
@@ -73,7 +79,8 @@
         modelListeners: {
             height: {
                 func: "{that}.events.onHeightChanged.fire",
-                args: ["{change}.value"]
+                args: ["{change}.value"],
+                excludeSource: "init"
             }
         },
 
@@ -107,10 +114,15 @@
                         "onCreate.render": {
                             funcName: "gpii.psp.heightObservable.renderMarkup",
                             args: [
+                                "{that}",
                                 "{that}.container",
                                 "{heightObservable}.options.markup.heightChangeListener",
                                 "{heightObservable}.events.onHeightListenerMarkupRendered"
                             ]
+                        },
+                        "onDestroy.removeMarkup": {
+                            funcName: "gpii.psp.heightObservable.removeMarkup",
+                            args: ["{that}"]
                         }
                     }
                 }
@@ -147,9 +159,9 @@
      * should be added. If the parent component has explicitly specified such
      * a container, it will be used. Otherwise, the parent's container will be
      * used.
-     * @param heightListenerContainer {jQuery} An element representing the
+     * @param {jQuery} heightListenerContainer - An element representing the
      * height change listener container. May be empty.
-     * @param heightObservableContainer {jQuery} An element representing the
+     * @param {jQuery} heightObservableContainer - An element representing the
      * container of the parent component.
      * @return {jQuery} the element in which the height change listener DOM
      * element should be added.
@@ -161,15 +173,29 @@
     /**
      * Creates the height change listner DOM element, adds it to the specified
      * container and fires an event when done.
-     * @param container {jQuery} The container to which the height change listener
+     * @param {Component} that - The `renderHeightListenerMarkup` instance.
+     * @param {jQuery} container - The container to which the height change listener
      * element will be added.
-     * @param markup {String} The markup of the height change listner element.
-     * @param onRenderedEvent {Object} The event which will be fired once the
+     * @param {String} markup - The markup of the height change listner element.
+     * @param {Object} onRenderedEvent - The event which will be fired once the
      * markup has been rendered.
      */
-    gpii.psp.heightObservable.renderMarkup = function (container, markup, onRenderedEvent) {
+    gpii.psp.heightObservable.renderMarkup = function (that, container, markup, onRenderedEvent) {
         var heightListenerElement = jQuery(markup);
         container.prepend(heightListenerElement);
+
+        that.heightListenerElement = heightListenerElement;
         onRenderedEvent.fire(heightListenerElement);
+    };
+
+    /**
+     * Removes the height change listener DOM element when it is no longer needed
+     * (i.e. when the component is destroyed).
+     * @param {Component} that - The `renderHeightListenerMarkup` instance.
+     */
+    gpii.psp.heightObservable.removeMarkup = function (that) {
+        if (that.heightListenerElement) {
+            that.heightListenerElement.remove();
+        }
     };
 })(fluid);

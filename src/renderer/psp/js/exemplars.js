@@ -64,9 +64,12 @@
 
     fluid.defaults("gpii.psp.exemplar.settingsVisualizer", {
         gradeNames: "gpii.psp.exemplar",
+        resourceName: "setting.html"
+    });
 
-        resourceName: "settingRow.html",
-        grade: "gpii.psp.settingsVisualizer"
+    fluid.defaults("gpii.psp.exemplar.settingGroupsVisualizer", {
+        gradeNames: "gpii.psp.exemplar",
+        resourceName: "settingGroup.html"
     });
 
     fluid.defaults("gpii.psp.exemplar.multipicker", {
@@ -125,6 +128,16 @@
         resourceName: "stepper.html",
         grade: "gpii.psp.widgets.stepper",
         schemaType: "number",
+        modelRelay: {
+            value: {
+                transform: {
+                    type: "fluid.transforms.round",
+                    inputPath: "value",
+                    outputPath: "value",
+                    scale: 2
+                }
+            }
+        },
         widgetOptions: {
             model: {
                 value: "{settingPresenter}.model.value",
@@ -191,10 +204,11 @@
 
 
     /**
-     * Returns `gpii.psp.exemplar` object for given schema (PSP channel type) type
-     * @param widgetExemplars {Object} The `gpii.psp.widgetExemplar` object
-     * @param schemaType {String}
-     * @return {Object} The matching `gpii.psp.exemplar` object
+     * Returns `gpii.psp.exemplar` object for given schema (PSP channel type) type.
+     *
+     * @param {Object} widgetExemplars - The `gpii.psp.widgetExemplar` object.
+     * @param {String} schemaType - The type of schema.
+     * @return {Object} - The matching `gpii.psp.exemplar` object.
      */
     gpii.psp.widgetExemplars.getExemplarBySchemaType = function (widgetExemplars, schemaType) {
         return fluid.values(widgetExemplars)

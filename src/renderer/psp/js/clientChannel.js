@@ -22,23 +22,13 @@
     fluid.registerNamespace("gpii.psp.clientChannel");
 
     /**
-     * Sends asynchronously a message to the main process.
-     * @param channel {String} The channel via which the message will
-     * be sent
-     * @oaram message {Any} The actual message that is to be sent.
-     */
-    gpii.psp.clientChannel.sendMessage = function (channel, message) {
-        ipcRenderer.send(channel, message);
-    };
-
-    /**
      * A function which should be called whenever a settings is updated
      * as a result of a user's input. Its purpose is to notify the main
      * electron process for the change.
-     * @param clientChannel {Component} The `gpii.psp.clientChannel`
+     * @param {Component} clientChannel - The `gpii.psp.clientChannel`
      * instance.
-     * @param setting {Object} The setting which has been updated.
-     * @param oldValue {Any} The old value of the setting.
+     * @param {Object} setting - The setting which has been updated.
+     * @param {Any} oldValue - The old value of the setting.
      */
     gpii.psp.clientChannel.alterSetting = function (clientChannel, setting, oldValue) {
         setting = fluid.extend(true, {}, setting, {
@@ -50,9 +40,13 @@
     /**
      * Initializes the `clientChannel` component by registering listeners
      * for various messages sent by the main process.
-     * @param clientChannel {Component} The `clientChannel` component.
+     * @param {Component} clientChannel - The `clientChannel` component.
      */
     gpii.psp.clientChannel.initialize = function (clientChannel) {
+        ipcRenderer.on("onIsKeyedInUpdated", function (event, isKeyedIn) {
+            clientChannel.events.onIsKeyedInUpdated.fire(isKeyedIn);
+        });
+
         ipcRenderer.on("onPreferencesUpdated", function (event, preferences) {
             clientChannel.events.onPreferencesUpdated.fire(preferences);
         });
@@ -63,6 +57,10 @@
 
         ipcRenderer.on("onAccentColorChanged", function (event, accentColor) {
             clientChannel.events.onAccentColorChanged.fire(accentColor);
+        });
+
+        ipcRenderer.on("onThemeChanged", function (event, theme) {
+            clientChannel.events.onThemeChanged.fire(theme);
         });
 
         ipcRenderer.on("onRestartRequired", function (event, pendingChanges) {
@@ -77,9 +75,11 @@
     fluid.defaults("gpii.psp.clientChannel", {
         gradeNames: ["fluid.component"],
         events: {
+            onIsKeyedInUpdated: null,
             onPreferencesUpdated: null,
             onSettingUpdated: null,
             onAccentColorChanged: null,
+            onThemeChanged: null,
             onRestartRequired: null
         },
         listeners: {
@@ -90,11 +90,14 @@
         },
         invokers: {
             sendMessage: {
-                funcName: "gpii.psp.clientChannel.sendMessage"
+                funcName: "gpii.psp.channel.notifyChannel"
             },
             close: {
                 func: "{that}.sendMessage",
-                args: ["onPSPClose"]
+                args: [
+                    "onPSPClose",
+                    "{arguments}.0" // params
+                ]
             },
             keyOut: {
                 func: "{that}.sendMessage",
@@ -124,15 +127,25 @@
             },
             restartNow: {
                 func: "{that}.sendMessage",
-                args: ["onRestartNow"]
-            },
-            restartLater: {
-                func: "{that}.sendMessage",
-                args: ["onRestartLater"]
+                args: [
+                    "onRestartNow",
+                    "{arguments}.0" // pendingChanges
+                ]
             },
             undoChanges: {
                 func: "{that}.sendMessage",
-                args: ["onUndoChanges"]
+                args: [
+                    "onUndoChanges",
+                    "{arguments}.0" // pendingChanges
+                ]
+            },
+            requestSignIn: {
+                func: "{that}.sendMessage",
+                args: [
+                    "onSignInRequested",
+                    "{arguments}.0", // email
+                    "{arguments}.1"  // password
+                ]
             }
         }
     });

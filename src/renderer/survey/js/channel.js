@@ -28,7 +28,7 @@
         gradeNames: ["fluid.component"],
         events: {
             onSurveyOpen: null,
-            onExecuteCommand: null
+            onExecuteJavaScript: null
         },
         listeners: {
             "onCreate.initChannel": {
@@ -45,9 +45,9 @@
 
     /**
      * Sends asynchronously a message to the main process.
-     * @param channel {String} The channel via which the message will
-     * be sent.
-     * @oaram message {Any} The actual message that is to be sent.
+     *
+     * @param {String} channel - The channel via which the message will be sent.
+     * @param {Any} message - The actual message that is to be sent.
      */
     gpii.survey.channel.sendMessage = function (channel, message) {
         ipcRenderer.send(channel, message);
@@ -56,15 +56,15 @@
     /**
      * Initializes the component by registering listeners for survey
      * related messages sent by the main process.
-     * @param that {Component} The `gpii.survey.channel` instance.
+     * @param {Component} that - The `gpii.survey.channel` instance.
      */
     gpii.survey.channel.initialize = function (that) {
         ipcRenderer.on("onSurveyOpen", function (event, surveyParams) {
             that.events.onSurveyOpen.fire(surveyParams);
         });
 
-        ipcRenderer.on("onExecuteCommand", function (event, command) {
-            that.events.onExecuteCommand.fire(command);
+        ipcRenderer.on("onExecuteJavaScript", function (event, command) {
+            that.events.onExecuteJavaScript.fire(command);
         });
     };
 })(fluid);

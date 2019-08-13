@@ -16,9 +16,6 @@
 
 "use strict";
 (function (fluid) {
-    var gpii = fluid.registerNamespace("gpii"),
-        shell = require("electron").shell;
-
     fluid.defaults("gpii.psp.footer", {
         gradeNames: ["fluid.viewComponent"],
         selectors: {
@@ -26,6 +23,9 @@
         },
         model: {
             messages: {
+                help: null
+            },
+            urls: {
                 help: null
             }
         },
@@ -38,22 +38,10 @@
                         label: "{footer}.model.messages.help"
                     },
                     invokers: {
-                        "onClick": "gpii.psp.openUrl({footer}.options.urls.help)"
+                        "onClick": "gpii.psp.openUrlExternally({footer}.model.urls.help)"
                     }
                 }
             }
-        },
-        urls: {
-            help: "http://pmt.gpii.org/help"
         }
     });
-
-    /**
-     * Opens the passed url externally using the default browser for the
-     * OS (or set by the user).
-     * @param url {String} The url to open externally.
-     */
-    gpii.psp.openUrl = function (url) {
-        shell.openExternal(url);
-    };
 })(fluid);
