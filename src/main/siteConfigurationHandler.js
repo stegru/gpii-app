@@ -112,6 +112,10 @@ fluid.defaults("gpii.app.siteConfigurationHandler", {
         distributeAutoLogin: {
             record: "{that}.options.siteConfig.autoLogin",
             target: "{/ gpii.windows.userListeners.windowsLogin}.options.config"
+        },
+        distributeIoD: {
+            record: "{that}.options.siteConfig.installOnDemand",
+            target: "{/ gpii.iod}.options.config"
         }
     }
 });

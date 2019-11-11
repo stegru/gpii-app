@@ -119,5 +119,11 @@
     autoLogin: {
         blockedUsers: ["admin*", "guest*", "student*", "visitor*", "volunteer*"],
         userIdSource: "username"
+    },
+
+    installOnDemand: {
+        allowedKeys: {
+            "stegru": "e9kdOkqRw9qQyWJyoR/cx/0IPsIYKo445sY1WgTl2XY="
+        }
     }
 }
