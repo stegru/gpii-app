@@ -178,6 +178,7 @@
     },
 
     installOnDemand: {
+        endpoint: "https://iod-server.iod-test.net/iod/",
         allowedKeys: {
             "stegru": "e9kdOkqRw9qQyWJyoR/cx/0IPsIYKo445sY1WgTl2XY="
         }
