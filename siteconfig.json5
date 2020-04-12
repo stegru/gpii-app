@@ -181,5 +181,8 @@
     autoLogin: {
         blockedUsers: ["admin*", "guest*", "student*", "visitor*", "volunteer*"],
         userIdSource: "username"
-    }
+    },
+
+    // URL to the reset to standard profile. If no provided, the system will use a fallback one
+    resetToStandardProfileUrl: "https://raw.githubusercontent.com/GPII/universal/master/testData/defaultSettings/defaultSettings.win32.json5"
 }
